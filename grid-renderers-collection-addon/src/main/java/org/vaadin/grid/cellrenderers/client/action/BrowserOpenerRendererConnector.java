@@ -20,6 +20,7 @@ import com.vaadin.client.renderers.ClickableRenderer.RendererClickHandler;
 import com.vaadin.client.widget.grid.RendererCellReference;
 import com.vaadin.client.widgets.Grid;
 import com.vaadin.shared.MouseEventDetails;
+import com.vaadin.shared.ui.BrowserWindowOpenerState;
 import com.vaadin.shared.ui.Connect;
 import com.vaadin.shared.util.SharedUtil;
 
@@ -30,7 +31,23 @@ public class BrowserOpenerRendererConnector extends ClickableRendererConnector<S
 
 	HtmlButtonRendererServerRpc rpc = RpcProxy.create(HtmlButtonRendererServerRpc.class, this);
 
-    public class BrowserOpenerClientRenderer extends ClickableRenderer<String, Button> {
+	public class UrlButton extends Button {
+		private String url;
+			
+		public UrlButton() {
+			super();
+		}
+
+		public void setUrl(String url) {
+			this.url = url;
+		}
+
+		public String getUrl() {
+			return url;
+		}
+	}
+	
+    public class BrowserOpenerClientRenderer extends ClickableRenderer<String, UrlButton> {
 
         private boolean htmlContentAllowed = false;
         private static final String ROW_KEY_PROPERTY = "rowKey";
@@ -38,8 +55,8 @@ public class BrowserOpenerRendererConnector extends ClickableRendererConnector<S
         private String urlString;
         
         @Override
-        public Button createWidget() {
-            final Button b = GWT.create(Button.class);
+        public UrlButton createWidget() {
+            final UrlButton b = new UrlButton();
             
             b.addClickHandler(new ClickHandler() {
             	@Override
@@ -53,10 +70,10 @@ public class BrowserOpenerRendererConnector extends ClickableRendererConnector<S
             		event.stopPropagation();
             		String url = null;
             		if (getState().baseUrl == null) 
-            			url = urlString;
+            			url = b.getUrl();
             		else
             			url = getState().baseUrl;
-                    url = addParametersAndFragment(url);
+                    url = addParametersAndFragment(url,b);
                     if (url != null) {
                         Window.open(url, getState().target, getState().features);
                     }
@@ -74,7 +91,7 @@ public class BrowserOpenerRendererConnector extends ClickableRendererConnector<S
             return htmlContentAllowed;
         }
 
-        private String addParametersAndFragment(String url) {
+        private String addParametersAndFragment(String url, UrlButton button) {
             if (url == null) {
                 return null;
             }
@@ -100,17 +117,22 @@ public class BrowserOpenerRendererConnector extends ClickableRendererConnector<S
 
             if (getState().baseUrl != null) {
                 // Replace previous fragment or just add to the end of the url
-                url = url.replaceFirst("#.*|$", "#" + urlString);
+                url = url.replaceFirst("#.*|$", "#" + button.getUrl());
             }            
             return url;
         }
         
         
         @Override
-        public void render(RendererCellReference cell, String text, Button button) {
+        public void render(RendererCellReference cell, String text, UrlButton button) {
 
 			Element e = button.getElement();
-			urlString = text;
+			if (getState().isResource) { 
+		        String url = getResourceUrl(text);
+				button.setUrl(url);
+			} else { 
+				button.setUrl(text);
+			}
 			
             if(e.getPropertyString(ROW_KEY_PROPERTY) != getRowKey((JsonObject) cell.getRow())) {
                 e.setPropertyString(ROW_KEY_PROPERTY,
@@ -132,10 +154,10 @@ public class BrowserOpenerRendererConnector extends ClickableRendererConnector<S
         		String title = getState().tooltip;
         		if (title == null) { 
         			if (getState().baseUrl == null) 
-        				title= urlString;
+        				title= text;
         			else
         				title = getState().baseUrl;
-        			title = addParametersAndFragment(title);
+        			title = addParametersAndFragment(title,button);
         		}
         		button.setTitle(title);
         	}

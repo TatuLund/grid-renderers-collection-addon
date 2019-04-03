@@ -2,30 +2,25 @@ package org.vaadin.grid.cellrenderers.demo;
 
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Random;
-import java.util.stream.IntStream;
 
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.Title;
 import com.vaadin.annotations.VaadinServletConfiguration;
-import com.vaadin.data.Item;
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.data.util.GeneratedPropertyContainer;
-import com.vaadin.data.util.PropertyValueGenerator;
 import com.vaadin.data.util.converter.StringToBigDecimalConverter;
 import com.vaadin.data.util.converter.StringToBooleanConverter;
-import com.vaadin.data.util.converter.StringToIntegerConverter;
 
 import org.vaadin.grid.cellrenderers.action.BrowserOpenerRenderer;
 import org.vaadin.grid.cellrenderers.action.DeleteButtonRenderer;
 import org.vaadin.grid.cellrenderers.action.DeleteButtonRenderer.DeleteRendererClickEvent;
 import org.vaadin.grid.cellrenderers.action.DeleteButtonRenderer.DeleteRendererClickListener;
+import org.vaadin.grid.cellrenderers.action.AbstractHtmlButtonRenderer.HtmlButtonRendererClickEvent;
+import org.vaadin.grid.cellrenderers.action.AbstractHtmlButtonRenderer.HtmlButtonRendererClickListener;
 import org.vaadin.grid.cellrenderers.action.HtmlButtonRenderer;
-import org.vaadin.grid.cellrenderers.action.HtmlButtonRenderer.HtmlButtonRendererClickEvent;
-import org.vaadin.grid.cellrenderers.action.HtmlButtonRenderer.HtmlButtonRendererClickListener;
 import org.vaadin.grid.cellrenderers.editoraware.CheckboxRenderer;
 import org.vaadin.grid.cellrenderers.navigation.GridNavigationExtension;
 import org.vaadin.grid.cellrenderers.EditableRenderer.ItemEditEvent;
@@ -40,6 +35,7 @@ import org.vaadin.grid.cellrenderers.view.RowIndexRenderer;
 import org.vaadin.grid.cellrenderers.view.SparklineRenderer;
 import org.vaadin.grid.cellrenderers.view.SparklineRenderer.SparklineConfiguration;
 
+import com.vaadin.server.ClassResource;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.server.VaadinServlet;
@@ -48,7 +44,6 @@ import com.vaadin.ui.Button;
 import com.vaadin.ui.Button.ClickEvent;
 import com.vaadin.ui.Button.ClickListener;
 import com.vaadin.ui.Grid;
-import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.TabSheet;
@@ -74,18 +69,21 @@ public class DemoUI extends UI {
 
     	public class MyPojo {
     		String foo = "<B>Java</B> "+FontAwesome.COFFEE.getHtml();
-    		String bar = "http://vaadin.com";
+    		String bar = "fragment";
     		int id = -1;
     		final Number[] numbers;
     		final Random rand;
     		Double stars;
     		byte[] image;
+			private ClassResource file;
     		
     		public MyPojo(int i) {
     			id = i;
     			numbers = new Number[60];
     			rand = new Random(id);
     			stars =  (double) rand.nextInt(10) / 2.0;
+    			bar = bar+i;
+    			file = new ClassResource("/lorem_ipsum.pdf");
     		}
 
     		public byte[] getImage() {
@@ -117,6 +115,14 @@ public class DemoUI extends UI {
 
     		public void setFoo(String foo) {
     			this.foo = foo;
+    		}
+
+    		public ClassResource getFile() {
+    			return file;
+    		}
+
+    		public void setFile(ClassResource file) {
+    			this.file = file;
     		}
 
     		public String getBar() {
@@ -156,7 +162,7 @@ public class DemoUI extends UI {
     		htmlButtonRenderer.setHtmlContentAllowed(true);
     		grid.getColumn("foo").setRenderer(htmlButtonRenderer);
     		grid.getColumn("foo").setEditable(false);
-    		BrowserOpenerRenderer openButton = new BrowserOpenerRenderer(FontAwesome.FOLDER_OPEN.getHtml(), new HtmlButtonRendererClickListener() {
+    		BrowserOpenerRenderer openButton = new BrowserOpenerRenderer(DemoUI.class,FontAwesome.FOLDER_OPEN.getHtml(), new HtmlButtonRendererClickListener() {
 				@Override
 				public void click(HtmlButtonRendererClickEvent event) {
 					MyPojo item = (MyPojo) event.getItem();
@@ -167,7 +173,16 @@ public class DemoUI extends UI {
     		openButton.setTooltipEnabled(true);
     		grid.getColumn("bar").setRenderer(openButton);
     		grid.getColumn("bar").setEditable(false);
-    		grid.setColumns("index", "id", "foo", "bar", "stars", "numbers");
+    		BrowserOpenerRenderer openButton2 = new BrowserOpenerRenderer(FontAwesome.FILE.getHtml(), new HtmlButtonRendererClickListener() {
+				@Override
+				public void click(HtmlButtonRendererClickEvent event) {
+				}    			
+    		});
+    		openButton2.setHtmlContentAllowed(true);
+    		openButton2.setTooltipEnabled(true);
+    		grid.getColumn("file").setRenderer(openButton2);
+    		grid.getColumn("file").setEditable(false);
+    		grid.setColumns("index", "id", "foo", "bar", "file", "stars", "numbers");
     		return grid;
     	}
 
@@ -222,6 +237,7 @@ public class DemoUI extends UI {
     				config.setMinMaxDotsVisible(!config.isMinMaxDotsVisible());
     			}
     		});
+
     		HorizontalLayout buttonsLayout = new HorizontalLayout();
     		buttonsLayout.addComponents(normalRangeBtn, minMaxBtn, averageBtn, valueBtn, valueDotBtn, minmaxDotBtn);
     		addComponent(buttonsLayout);
@@ -298,7 +314,7 @@ public class DemoUI extends UI {
 			grid.setColumns("action","description","stars","truth","date","number","choice");
 			grid.setSizeFull();
 			grid.setEditorEnabled(false);
-
+			
 			DeleteButtonRenderer deleteButton = new DeleteButtonRenderer(new DeleteRendererClickListener() {
 				@Override
 				public void click(DeleteRendererClickEvent event) {
@@ -386,6 +402,8 @@ public class DemoUI extends UI {
         tabSheet.addTab(new SparklineDemo(), "Sparkline renderer");
         tabSheet.setSizeFull();
         setContent(tabSheet);
-    	
+
+        String uriFragment = UI.getCurrent().getPage().getUriFragment();
+        if (uriFragment != null) Notification.show("Page opened with BrowserOpenerRenderer, URI fragment: "+uriFragment);
     }
 }
